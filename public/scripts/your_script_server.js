@@ -1,3 +1,9 @@
+/**
+ * React 에서는 각 컴포넌트는 초기화 시점 뿐 아니라 항상 뷰의 상태를 표현할 수 있어야 한다.
+ * React, components should always represent the state of the view and not only at the point of initialization.
+ *
+ */
+
 var data = [
 	{id : 1, author : 'Peter', text : 'This is the first comment!'}
 	, {id : 2, author : 'Jack', text : 'This is the *seconed* ~~comment!~~'}
@@ -5,13 +11,33 @@ var data = [
 
 
 var CommentForm = React.createClass({
-	render : function(){
+	getInitialState : function(){
+		return {author : '', text : ''};
+	}
+	, handleAuthorChange : function(e) {
+		this.setState({author : e.target.value});
+	}
+	, handleTextChange : function(e) {
+		this.setState({text : e.target.value});
+	}
+	, handleSubmit : function(e) {
+		e.preventDefault();
+		var author = this.state.author.trim();
+		var text = this.state.text.trim();
+		if(!text || !author) {
+			return;
+		}
+
+		this.props.onCommentSubmit({author : author, text : text});
+		this.setState({author : '', text : ''});
+	}
+	, render : function(){
 		return (
-			<div className = "commentForm">
-				<input type="text" placeHolder="Your Name"/>
-				<input type="text" placeHolder="Say Something..."/>
+			<form className = "commentForm" onSubmit={this.handleSubmit}>
+				<input type="text" placeHolder="Your Name" value={this.state.author} onChange={this.handleAuthorChange}/>
+				<input type="text" placeHolder="Say Something..." value={this.state.text} onChange={this.handleTextChange}/>
 				<input type="submit" value="post"/>
-			</div>
+			</form>
 		);
 	}
 });
@@ -58,6 +84,26 @@ var CommentBox = React.createClass({
 			}.bind(this)
 		});
 	}
+	, handleCommentSubmit : function (comment){
+
+		var comments = this.state.data;
+		comment.id = Date.now();
+		var newComments = comments.concat([comment]);
+		this.setState({data : newComments});
+
+		$.ajax({
+			url : this.props.url
+			, dataType : 'json'
+			, type: 'POST'
+			, data : comment
+			, success : function(data) {
+				this.setState({data : data});
+			}.bind(this)
+			, error : function(xhr, status, err) {
+				console.error(this.props.url, status, err.toString());
+			}.bind(this)
+		});
+	}
 	//this.setState() 가 불리면 갱신 
 	, getInitialState : function(){
 		return {data : []};
@@ -72,7 +118,7 @@ var CommentBox = React.createClass({
 			<div className="commentBox">
 				<h1>Comments</h1>
 				<CommentList data={this.state.data} />
-				<CommentForm />
+				<CommentForm onCommentSubmit={this.handleCommentSubmit}/>
 			</div>
 		);
 	}
